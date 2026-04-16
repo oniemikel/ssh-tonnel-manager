@@ -1,7 +1,7 @@
 use serde::{Serialize, Deserialize};
 use dialoguer::{theme::ColorfulTheme, Select, Input};
 use std::process::Command;
-use std::io::{self, Write};
+use std::io::{self};
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 struct SshConfig {
