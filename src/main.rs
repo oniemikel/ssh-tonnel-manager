@@ -84,11 +84,42 @@ fn connect_tunnel(hosts: &[SshConfig]) -> Result<(), Box<dyn std::error::Error>>
 
     println!("--- SSHトンネル起動中: {} ---", h.name);
     
+    // 1. SSHトンネルをバックグラウンド風に起動 (Childプロセス)
     let mut child = Command::new("ssh")
         .args(&["-N", "-L", &format!("{}:{}", h.local_port, target), "-p", &h.port, "-i", &h.key_path, &format!("{}@{}", h.user, h.ip)])
         .spawn()?;
 
-    println!("Enterキーで切断します...");
+    println!("Tunnel established at localhost:{}", h.local_port);
+
+    // 2. メインのローカルターミナルを「新しいウィンドウ」で起動
+    #[cfg(target_os = "windows")]
+    {
+        // Windows: 新しいPowerShellウィンドウを起動
+        Command::new("cmd")
+            .args(&["/C", "start", "powershell", "-NoExit", "-Command", &format!("Write-Host 'Connected to localhost:{} via {}' -ForegroundColor Cyan", h.local_port, h.name)])
+            .spawn()?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // macOS: Terminal.app で新しいウィンドウを開く
+        Command::new("osascript")
+            .args(&["-e", &format!("tell application \"Terminal\" to do script \"echo Connected to localhost:{}; bash\"", h.local_port)])
+            .spawn()?;
+    }
+
+    #[cfg(any(target_os = "linux"))]
+    {
+        // Linux: 代表的なターミナルエミュレータを試行（x-terminal-emulator等）
+        Command::new("x-terminal-emulator")
+            .args(&["-e", "bash"])
+            .spawn()
+            .or_else(|_| Command::new("gnome-terminal").spawn())?;
+    }
+
+    println!("\n新しいターミナルを開きました。");
+    println!("このRustツールでEnterキーを押すと、トンネルを閉じて終了します...");
+    
     let mut _buf = String::new();
     io::stdin().read_line(&mut _buf)?;
     
